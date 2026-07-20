@@ -1,0 +1,23 @@
+# Build output
+target/
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# Logs / temp
+*.log
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credential guardrail (checkmarx-repro 安全紅線):
+# 重現專案一律不得包含可能攜帶憑證的設定檔
+*.yaml
+*.yml
