@@ -6,3 +6,8 @@ INSERT INTO TLM_DATA (TLM_NAME_ID, TLM_VALUE, CATEGORY, TLM_TIME, EXECUTION_ID) 
  (1, 30.0, 'VC0', '2026-01-01 00:02:00', 1),
  (2, 100.0, 'VC0', '2026-01-01 00:00:00', 1),
  (2, 300.0, 'VC0', '2026-01-01 00:01:00', 1);
+
+INSERT INTO RESET_DATA (TLM_NAME_ID, TLM_VALUE, CATEGORY, INPUT_FILE_NAME, SEGMENT_INDEX) VALUES
+ (1, 10.0, 'VC0', 'sample-import.tdp', 0),
+ (1, 25.0, 'VC0', 'sample-import.tdp', 0),
+ (1, 35.0, 'VC0', 'sample-import.tdp', 0);

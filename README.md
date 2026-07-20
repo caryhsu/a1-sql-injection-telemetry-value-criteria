@@ -61,20 +61,23 @@ Evidence (all code in this project is byte-identical to production, see §4):
 
 Production modules: `hd-trend-tlm-data`, `hd-trend-tlm-stats`, `hd-trend-commons`. Package names and class/method/field names are unchanged.
 
+**Every file on the flagged taint path — and every file in the controller/service/repository slice — is a byte-for-byte copy of production (CRLF line endings preserved, verified with `cmp`).** The full REST call chain is reproduced end-to-end: all three controller endpoints, all three service methods, both stats repositories.
+
 | File in this project | Provenance |
 |---|---|
-| `tlmdata/controller/TelemetryStatsQueryController.java` | **Trimmed**: only the flagged endpoint `batchQuery` kept; two unrelated endpoints removed. Method body identical. |
-| `tlmdata/controller/TlmStatsBatchRequest.java` | Verbatim |
-| `tlmdata/service/TelemetryStatsQueryService.java` | **Trimmed**: only `batchQuery` kept |
-| `tlmdata/service/TelemetryStatsQueryServiceImpl.java` | **Trimmed**: only `batchQuery` kept; method body identical |
-| `tlmdata/config/TelemetryRepositoryConfig.java` | **Trimmed**: only the `normalTelemetryStatsRepository` bean kept |
+| `tlmdata/controller/TelemetryStatsQueryController.java` | **Verbatim (complete file, all 3 endpoints: `query`, `batchQuery`, `batchQueryReset`)** |
+| `tlmdata/controller/TlmStatsBatchRequest.java`, `TlmResetStatsBatchRequest.java` | Verbatim |
+| `tlmdata/service/TelemetryStatsQueryService.java`, `TelemetryStatsQueryServiceImpl.java` | **Verbatim (complete files, all methods)** |
+| `tlmdata/config/TelemetryRepositoryConfig.java` | **Trimmed**: only the two stats-repository beans (`normalTelemetryStatsRepository`, `resetTelemetryStatsRepository`) kept; production additionally registers value / time-range / aggregate repositories from unrelated packages |
 | `tlmstats/repository/NormalTelemetryStatsRepository.java` | **Verbatim (complete file)** |
+| `tlmstats/repository/ResetTelemetryStatsRepository.java` | **Verbatim (complete file)** |
 | `tlmstats/repository/DbMedianCalculator.java`, `AbstractDbMedianCalculator.java`, `DbMedianCalculator_H2.java`, `DbMedianCalculator_POSTGRES.java`, `DbMedianCalculatorFactory.java` | Verbatim |
-| `tlmstats/model/TelemetryStatistics.java`, `TelemetryStatisticsAccumulator.java` | Verbatim |
-| `tlmstats/model/TelemetryStatisticsCalculator.java` | **Trimmed**: only `aggregateStreaming` (used by the flow) kept |
+| `tlmstats/model/TelemetryStatistics.java`, `TelemetryStatisticsAccumulator.java`, `TelemetryStatisticsCalculator.java`, `TelemetryStatisticsComputation.java`, `DefaultTelemetryStatisticsCalculator.java`, `AbstractTelemetryStatisticsCalculator.java` | Verbatim |
 | `model/tlmfilter/TelemetryValueCriteriaSqlBuilder.java`, `TelemetryValueCriterion.java` | **Verbatim (the core of the finding)** |
-| `model/SohType.java`, `sql/SqlWithParams.java` | Verbatim |
+| `model/SohType.java`, `sql/SqlWithParams.java`, `time/TelemetryTimeParser.java` | Verbatim |
 | `ReproApplication.java`, `config/ReproJacksonConfig.java`, `lombok.config`, `schema.sql`, `data.sql`, `application.properties` | **Repro-only scaffolding** — does not exist in production; only needed to boot/run the demo |
+
+**Scan guidance:** to reproduce the finding, scan this project with the **same preset (`OWASP TOP 10 - 2021`) and a full scan** (the production finding is query id 594, `Java\Cx\Java Critical Risk\SQL Injection 版本:2`; a preset without this query will not report it). Expected flow as in §1.
 
 **Confidentiality:** this project intentionally contains **no YAML, no credentials, no secrets of any kind**. The datasource is an embedded in-memory H2 database auto-configured by Spring Boot; `application.properties` holds no connection settings. Table/column names match the production schema, sample rows are synthetic.
 
@@ -100,6 +103,12 @@ curl -X POST http://localhost:8080/api/tlm-stats/batch \
 curl -X POST http://localhost:8080/api/tlm-stats/batch \
   -H "Content-Type: application/json" \
   -d '{"sohTypes":["VC0"],"startMs":1767139200000,"endMs":1767312000000,"series":["TEMP1"],"telemetryValueCriteria":[{"name":"TEMP1'"'"' OR '"'"'1'"'"'='"'"'1","min":0.0,"max":999999.0}]}'
+
+# the other two production endpoints work as well (ISO-8601 instants for GET)
+curl "http://localhost:8080/api/tlm-stats/TEMP1?sohType=VC0&start=2025-12-31T00:00:00Z&end=2026-01-02T00:00:00Z"
+curl -X POST http://localhost:8080/api/tlm-stats/reset/batch \
+  -H "Content-Type: application/json" \
+  -d '{"sohTypes":["VC0"],"importFileName":"sample-import.tdp","segmentIndex":0,"series":["TEMP1"],"telemetryValueCriteria":[{"name":"TEMP1","min":15.0,"max":100.0}]}'
 ```
 
 To reproduce the finding: scan this project with the same preset (OWASP TOP 10 - 2021). Expected: `SQL_Injection` at `TelemetryStatsQueryController.batchQuery` / `NormalTelemetryStatsRepository`, same flow as §1.

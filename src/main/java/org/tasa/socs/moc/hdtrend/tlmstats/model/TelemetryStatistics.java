@@ -20,3 +20,4 @@ public class TelemetryStatistics {
     private Double stddevValue;
 
 }
+
